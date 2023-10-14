@@ -1,0 +1,10 @@
+minecraft:
+  workloadAsStatefulSet: true
+  strategyType: RollingUpdate
+  minecraftServer:
+    eula: true
+    gameMode: survival # creative, survival, adventure, spectator
+    motd: "Welcome to a Bizzabo Minecraft server, have fun!"
+    pvp: false
+    generatorSettings:
+      worldSaveName: world

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: realm-java
+description: A Helm chart for java based Minecraft servers
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+dependencies:
+  - name: minecraft
+    repository: https://itzg.github.io/minecraft-server-charts/
+    version: 4.11.0
