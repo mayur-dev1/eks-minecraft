@@ -15,7 +15,7 @@ provider "kubernetes" {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
     # This requires the awscli to be installed locally where Terraform is executed
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    args = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
   }
 }
 
@@ -28,7 +28,7 @@ provider "helm" {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
       # This requires the awscli to be installed locally where Terraform is executed
-      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+      args = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
     }
   }
 }
@@ -43,7 +43,7 @@ provider "kubectl" {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
     # This requires the awscli to be installed locally where Terraform is executed
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    args = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
   }
 }
 
@@ -53,15 +53,10 @@ data "aws_ecrpublic_authorization_token" "token" {
 }
 
 locals {
-  name            = "ex-eks-minecraft"
-  cluster_version = "1.28"
-  region          = "eu-west-1"
-
-  vpc_cidr = "10.0.0.0/16"
-  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
+  azs = slice(data.aws_availability_zones.available.names, 0, 3)
 
   tags = {
-    Example    = local.name
+    Example    = var.name
     GithubRepo = "terraform-aws-eks"
     GithubOrg  = "terraform-aws-modules"
   }
@@ -79,8 +74,8 @@ resource "aws_route53_zone" "minecraft" {
 module "eks" {
   source = "terraform-aws-modules/eks/aws"
 
-  cluster_name                   = local.name
-  cluster_version                = local.cluster_version
+  cluster_name                   = var.name
+  cluster_version                = var.cluster_version
   cluster_endpoint_public_access = true
 
   cluster_addons = {
@@ -106,15 +101,15 @@ module "eks" {
         # components (kubelet, kube-proxy, and containerd). Fargate rounds up to the following
         # compute configuration that most closely matches the sum of vCPU and memory requests in
         # order to ensure pods always have the resources that they need to run.
-        resources   = {
+        resources = {
           limits = {
-            cpu    = "0.25"
+            cpu = "0.25"
             # We are targeting the smallest Task size of 512Mb, so we subtract 256Mb from the
             # request/limit to ensure we can fit within that task
             memory = "256M"
           }
           requests = {
-            cpu    = "0.25"
+            cpu = "0.25"
             # We are targeting the smallest Task size of 512Mb, so we subtract 256Mb from the
             # request/limit to ensure we can fit within that task
             memory = "256M"
@@ -133,12 +128,12 @@ module "eks" {
   create_node_security_group    = false
 
   manage_aws_auth_configmap = true
-  aws_auth_roles            = [
+  aws_auth_roles = [
     # We need to add in the Karpenter node IAM role for nodes launched by Karpenter
     {
       rolearn  = module.karpenter.role_arn
       username = "system:node:{{EC2PrivateDNSName}}"
-      groups   = [
+      groups = [
         "system:bootstrappers",
         "system:nodes",
       ]
@@ -162,7 +157,7 @@ module "eks" {
     # NOTE - if creating multiple security groups with this module, only tag the
     # security group that Karpenter should utilize with the following tag
     # (i.e. - at most, only one security group should have this tag in your account)
-    "karpenter.sh/discovery" = local.name
+    "karpenter.sh/discovery" = var.name
   })
 }
 
@@ -356,13 +351,13 @@ resource "aws_security_group" "ingress_nginx_external" {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = local.name
-  cidr = local.vpc_cidr
+  name = var.name
+  cidr = var.vpc_cidr
 
   azs             = local.azs
-  private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
-  public_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
-  intra_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 52)]
+  private_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 4, k)]
+  public_subnets  = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 48)]
+  intra_subnets   = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 52)]
 
   enable_nat_gateway = true
   single_nat_gateway = true
@@ -374,7 +369,7 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = 1
     # Tags subnets for Karpenter auto-discovery
-    "karpenter.sh/discovery"          = local.name
+    "karpenter.sh/discovery" = var.name
   }
 
   tags = local.tags
