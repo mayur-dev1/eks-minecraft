@@ -221,42 +221,7 @@ resource "helm_release" "karpenter" {
 }
 
 resource "kubectl_manifest" "karpenter_provisioner" {
-  yaml_body = <<-YAML
-    apiVersion: karpenter.sh/v1alpha5
-    kind: Provisioner
-    metadata:
-      name: default
-    spec:
-      requirements:
-        - key: karpenter.sh/capacity-type
-          operator: In
-          values: ["spot"]
-        - key: "karpenter.k8s.aws/instance-category"
-          operator: In
-          values: ["c", "m"]
-        - key: "karpenter.k8s.aws/instance-cpu"
-          operator: In
-          values: ["2", "4", "8", "16"]
-        - key: "karpenter.k8s.aws/instance-hypervisor"
-          operator: In
-          values: ["nitro"]
-        - key: "topology.kubernetes.io/zone"
-          operator: In
-          values: ${jsonencode(local.azs)}
-        - key: "kubernetes.io/arch"
-          operator: In
-          values: ["arm64"]
-      kubeletConfiguration:
-        containerRuntime: containerd
-        maxPods: 110
-      limits:
-        resources:
-          cpu: 1000
-      consolidation:
-        enabled: true
-      providerRef:
-        name: default
-  YAML
+  yaml_body = file("${path.module}/../k8_manifests/karpenter_provisioner.yaml")
 
   depends_on = [
     helm_release.karpenter
@@ -264,19 +229,7 @@ resource "kubectl_manifest" "karpenter_provisioner" {
 }
 
 resource "kubectl_manifest" "karpenter_node_template" {
-  yaml_body = <<-YAML
-    apiVersion: karpenter.k8s.aws/v1alpha1
-    kind: AWSNodeTemplate
-    metadata:
-      name: default
-    spec:
-      subnetSelector:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-      securityGroupSelector:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-      tags:
-        karpenter.sh/discovery: ${module.eks.cluster_name}
-  YAML
+  yaml_body = file("${path.module}/../k8_manifests/karpenter_node_template.yaml")
 
   depends_on = [
     helm_release.karpenter
@@ -286,30 +239,9 @@ resource "kubectl_manifest" "karpenter_node_template" {
 # Example deployment using the [pause image](https://www.ianlewis.org/en/almighty-pause-container)
 # and starts with zero replicas
 resource "kubectl_manifest" "karpenter_example_deployment" {
-  yaml_body = <<-YAML
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: inflate
-    spec:
-      replicas: 0
-      selector:
-        matchLabels:
-          app: inflate
-      template:
-        metadata:
-          labels:
-            app: inflate
-        spec:
-          terminationGracePeriodSeconds: 0
-          containers:
-            - name: inflate
-              image: public.ecr.aws/eks-distro/kubernetes/pause:3.7
-              resources:
-                requests:
-                  cpu: 1
-  YAML
-
+  
+  yaml_body = file("${path.module}/../k8_manifests/karpenter_example_deployment.yaml")
+  
   depends_on = [
     helm_release.karpenter
   ]
