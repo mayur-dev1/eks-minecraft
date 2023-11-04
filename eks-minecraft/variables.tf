@@ -28,3 +28,21 @@ variable "vpc_cidr" {
   type        = string
   default     = "10.0.0.0/16"
 }
+
+variable "karpenter_namespace"{
+  description = "Namespace of the karpenter installation"
+  type= string
+  default = "karpenter"
+}
+
+variable "karpenter_chart"{
+  description = "Helm chart name of the Karpenter"
+  type= string
+  default = "karpenter"
+}
+
+variable "karpenter_repository"{
+  description = "Repository of the karpenter"
+  type= string
+  default = "oci://public.ecr.aws/karpenter"
+}
